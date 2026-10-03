@@ -49,7 +49,7 @@ class KfdDetection(unittest.TestCase):
             (110001, 120, 128, "", 16 << 30),                     # gfx1101 without a product name
             (120000, 64, 129, None, 16 << 30),                    # gfx1200, no product_name file
             (120001, 128, 130, "AMD Radeon AI PRO R9700", 32 << 30),
-            (110002, 64, 131, None, 8 << 30),                     # gfx1102: listed, not supported
+            (110002, 64, 131, None, 8 << 30),                     # gfx1102: the RX 7600 / 7600 XT, unvalidated
             (100306, 4, 132, None, 512 << 20),                    # an integrated gfx1036: listed, not supported
             (110000, 192, 133, "Radeon RX 7900 XTX", 24 << 30),
         ])
@@ -59,11 +59,10 @@ class KfdDetection(unittest.TestCase):
         self.assertEqual(g[0]["name"], setup.AMD_NAMES["gfx1101"])
         self.assertEqual(g[1]["name"], setup.AMD_NAMES["gfx1200"])
         self.assertEqual(g[2]["name"], "AMD Radeon AI PRO R9700")
-        self.assertEqual(g[3]["name"], "AMD Radeon (gfx1102)")
+        self.assertEqual(g[3]["name"], setup.AMD_NAMES["gfx1102"])
         self.assertAlmostEqual(g[2]["vram_gb"], 32.0)
         ok = [x["arch"] for x in g if setup.amd_problem(x) is None]
-        self.assertEqual(ok, ["gfx1101", "gfx1200", "gfx1201", "gfx1100"])
-        self.assertIn("gfx1102", setup.amd_problem(g[3]))
+        self.assertEqual(ok, ["gfx1101", "gfx1200", "gfx1201", "gfx1102", "gfx1100"])
         self.assertIn("gfx1036", setup.amd_problem(g[4]))
 
     def test_no_kfd(self):
@@ -75,6 +74,7 @@ class KfdDetection(unittest.TestCase):
         self.assertTrue(setup.ROCM_INDEXES["gfx1101"].endswith("/gfx110X-dgpu/"))
         self.assertTrue(setup.ROCM_INDEXES["gfx1200"].endswith("/gfx120X-all/"))
         self.assertEqual(setup.ROCM_INDEXES["gfx1101"], setup.ROCM_INDEXES["gfx1100"])
+        self.assertEqual(setup.ROCM_INDEXES["gfx1102"], setup.ROCM_INDEXES["gfx1100"])   # RDNA3: one family
         self.assertEqual(setup.ROCM_INDEXES["gfx1200"], setup.ROCM_INDEXES["gfx1201"])
 
 
@@ -236,10 +236,12 @@ class WindowsDetection(unittest.TestCase):
         for name, arch in (("AMD Radeon RX 9070 GRE", "gfx1201"), ("AMD Radeon AI PRO R9700", "gfx1201"),
                            ("AMD Radeon RX 9060 XT", "gfx1200"), ("AMD Radeon RX 7900 GRE", "gfx1100"),
                            ("AMD Radeon PRO W7800", "gfx1100"), ("AMD Radeon RX 7700 XT", "gfx1101"),
-                           ("AMD Radeon RX 7600", "gfx1102"), ("AMD Radeon RX 6950 XT", "gfx1030"),
+                           ("AMD Radeon RX 7600", "gfx1102"), ("AMD Radeon RX 7600 XT", "gfx1102"),
+                           ("AMD Radeon PRO W7600", "gfx1102"), ("AMD Radeon RX 6950 XT", "gfx1030"),
                            ("AMD Radeon RX 6800M", ""), ("AMD Radeon 780M Graphics", ""), ("AMD Radeon RX 7700S", "")):
             self.assertEqual(setup.win_amd_arch(None, name), arch, name)
         self.assertEqual(setup.win_amd_arch(0x744C, "whatever"), "gfx1100")
+        self.assertEqual(setup.win_amd_arch(0x7480, "whatever"), "gfx1102")
 
     def test_list_devices(self):
         h = setup.hip_devices(text=self.LIST)

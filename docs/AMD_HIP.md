@@ -1,12 +1,15 @@
-# AMD Radeon: the HIP backend (gfx1100, gfx1101, gfx1200, gfx1201, gfx1030)
+# AMD Radeon: the HIP backend (gfx1100, gfx1101, gfx1102, gfx1200, gfx1201, gfx1030)
 
 Strata runs on AMD Radeon cards through its HIP backend, the same engine as on NVIDIA compiled for AMD. This page
 covers the build on Linux (on Windows a ready-made engine, see [Windows](#windows)) for the RX 7900 XT / XTX (RDNA3, gfx1100) and the
 RX 9070 / 9070 XT / Radeon AI PRO R9700 (RDNA4, gfx1201; see [RDNA4](#rdna4-gfx1201)). The RX 7800 XT / 7700 XT
 (gfx1101) and the RX 9060 XT (gfx1200) were validated by their owners (see [Community-validated
-cards](#community-validated-cards)); the RX 6800 / 6900 series (RDNA2, gfx1030) builds and runs too, reported by a community machine and not yet validated by the maintainers (see [RDNA2](#rdna2-gfx1030)). Setup chooses it by itself on a PC with no NVIDIA card Strata can use (`--backend hip` on a PC with both); the
-install steps for users are in [INSTALL.md](INSTALL.md#amd-cards). Other AMD architectures, wave64, and mixed
-AMD/NVIDIA execution in one run are not supported.
+cards](#community-validated-cards)); the RX 6800 / 6900 series (RDNA2, gfx1030) builds and runs too, reported by a
+community machine and not yet validated by the maintainers (see [RDNA2](#rdna2-gfx1030)). The RX 7600 / 7600 XT
+(gfx1102) is accepted by setup and builds with a warning: it passed ctest (#192) and no model run has been reported
+(see [RX 7600 / 7600 XT](#rx-7600--7600-xt-gfx1102)). Setup chooses it by itself on a PC with no NVIDIA card Strata
+can use (`--backend hip` on a PC with both); the install steps for users are in [INSTALL.md](INSTALL.md#amd-cards).
+Other AMD architectures, wave64, and mixed AMD/NVIDIA execution in one run are not supported.
 
 The backend maps the CUDA-shaped runtime and BLAS calls to HIP/hipBLAS, uses
 RDNA2/RDNA3/RDNA4's signed integer dot instruction for quantized kernels, and supplies
@@ -18,8 +21,8 @@ This does not claim bit-identical model answers across backends. See
 
 ## Install with setup (recommended)
 
-On Linux with an RX 7900 XT / XTX, RX 7800 XT / 7700 XT, RX 9060 XT, RX 9070 / 9070 XT or Radeon AI PRO R9700 and
-the kernel's amdgpu driver (no ROCm install needed):
+On Linux with an RX 7900 XT / XTX, RX 7800 XT / 7700 XT, RX 7600 / 7600 XT, RX 9060 XT, RX 9070 / 9070 XT or Radeon
+AI PRO R9700 and the kernel's amdgpu driver (no ROCm install needed):
 
 ```sh
 ./setup.sh --backend hip
@@ -29,8 +32,8 @@ the kernel's amdgpu driver (no ROCm install needed):
   supported. On a PC without an NVIDIA card Strata can use, `--backend hip` is chosen automatically.
 - **ROCm:** a system ROCm 7 in `/opt/rocm` (or `$ROCM_PATH`) with hipcc and hipBLAS is used when present. Otherwise
   (or when it is older than 7.0) ROCm is installed into `.venv` from AMD's TheRock wheels (~10 GB, no sudo), pinned
-  to the version this backend was tested with, from the card family's index: `gfx110X-dgpu` for gfx1100 / gfx1101,
-  `gfx120X-all` for gfx1200 / gfx1201, `gfx103X-all` for gfx1030 (`STRATA_ROCM_VERSION` /
+  to the version this backend was tested with, from the card family's index: `gfx110X-dgpu` for gfx1100 / gfx1101 /
+  gfx1102, `gfx120X-all` for gfx1200 / gfx1201, `gfx103X-all` for gfx1030 (`STRATA_ROCM_VERSION` /
   `STRATA_ROCM_INDEX` override them; the gfx1030 index is not checked to carry the pinned version: a system
   ROCm 7 is the tested path there).
 - **Engine:** compiled on your PC for the card's architecture (10-20 minutes, once; again after a `git pull` that
@@ -131,9 +134,10 @@ cmake -S . -B build-hip \
 cmake --build build-hip --target strata -j2
 ```
 
-`CMAKE_HIP_ARCHITECTURES` is `gfx1100`, `gfx1101`, `gfx1200`, `gfx1201`, or a list such as `"gfx1100;gfx1201"`
-(one binary for both). gfx1102 (the same wave32, 64 KiB LDS and dot4 instruction) builds with a warning: it passed
-ctest (#192) but no model run has been reported; so does gfx1030 (RDNA2: the older `v_dot4_i32_i8`, a community run in #311). At startup the engine and `strata-device` compare each GPU they use
+`CMAKE_HIP_ARCHITECTURES` is `gfx1100`, `gfx1101`, `gfx1102`, `gfx1200`, `gfx1201`, or a list such as
+`"gfx1100;gfx1201"` (one binary for both). gfx1102 (the same wave32, 64 KiB LDS and dot4 instruction) builds with a
+warning: it passed ctest (#192) but no model run has been reported; so does gfx1030 (RDNA2: the older `v_dot4_i32_i8`,
+a community run in #311). At startup the engine and `strata-device` compare each GPU they use
 (`gcnArchName` up to the `:` feature suffix) with the architectures the binary was compiled for, and require
 wave32. A binary carried to another card stops with the card's name, its architecture and the build's list,
 instead of failing later with "invalid device function".
@@ -347,6 +351,33 @@ run it; the report below is from a community machine: an RX 6900 XT 16 GB (gfx10
 - **hipBLASLt:** ROCm's hipBLASLt ships no gfx1030 kernels, so there is no table and the plain hipBLAS path runs.
 - **Not validated:** gfx1031 / gfx1032 (the same `dp4a` path, no hardware report), setup's own build path and the
   `gfx103X-all` wheels on gfx1030, images, answer-quality benchmarks.
+
+## RX 7600 / 7600 XT (gfx1102)
+
+Setup accepts the card: on Linux it compiles the engine for gfx1102, on Windows the ready-made engine already carries
+gfx1102 code objects (`tools/hip/build_windows.bat`). CMake warns because no model run has been reported yet. The card
+passed ctest (#192) and has the same wave32, 64 KiB LDS per workgroup and dot4 instruction as gfx1100. No number below
+was measured on a gfx1102 card; each one names the card it was measured on.
+
+- **What 16 GB holds:** setup's own sizing (`low_ram_gpu_gb` in `setup.py`) credits a card with its VRAM minus ~5 GB
+  for the dense weights, its buffers and a 32K context's KV cache, so about 11 GB of experts: 47% of the Coder's
+  23.4 GB expert arena, 32% of Q2_0's 34.0 GB. The measured 16 GB AMD cards sit in the same cache range: the RX 9070
+  XT held 4,931 slots (9.4 GiB, 15.6 GiB peak VRAM) and the RX 6900 XT 6,310 slots (10.2 GiB) at 16K context.
+- **hipBLASLt:** no table ships for gfx1102, so the prompt's dense matrix products run on plain hipBLAS until one is
+  calibrated on the card ([Tuning table](#tuning-table)). On gfx1200 a table its owner calibrated measured 1.50x at
+  2,374 tokens and 1.98-1.99x at 65K and 130K over plain hipBLAS.
+- **Keep `--adapt-every` and `--pcie-frac` at their defaults.** Forcing both to 0, as the RX 7900 XTX configuration
+  in [AMD_HIP_PERFORMANCE.md](AMD_HIP_PERFORMANCE.md) does, cost 8.6 and 13.6 tok/s on the 16 GB gfx1030 card.
+- **No matrix cores:** `STRATA_HIP_WMMA` and `STRATA_SELECT_WMMA` are gfx12 only. gfx1102 uses the ordered FP32 QSA
+  attention and block scorer, as gfx1100 and gfx1030 do.
+- **The 8 GB RX 7600** runs, with setup's warning that under 12 GB of VRAM most experts stay on the CPU and it is
+  slow. The 16 GB 7600 XT is the card to use here.
+- **To validate it:** `strata-device --selftest`, then
+  `ctest --test-dir build-hip --output-on-failure --timeout 60 -E '^(ple_parity|platform_memory_test)$'`, then a Coder
+  IQ1_M run with setup's arguments and a prompt speed with and without a calibrated table. Report the card and driver,
+  the ROCm and hipBLASLt versions, the expert cache's slot count, peak VRAM, and prompt and decode speed at 4K and
+  16K. That is what moves gfx1102 from `_strata_hip_unvalidated` to `_strata_hip_community` in
+  `cmake/hip_backend.cmake`.
 
 ## Tuning table
 
